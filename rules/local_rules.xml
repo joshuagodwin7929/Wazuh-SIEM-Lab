@@ -1,0 +1,94 @@
+<!--
+  Custom Wazuh detection rules built for this lab, in the order they were
+  added across Milestones 4, 5 and 7.
+
+  File location on the manager: /var/ossec/etc/rules/local_rules.xml
+  Validate with:  sudo /var/ossec/bin/wazuh-analysisd -t
+  Apply with:     sudo systemctl restart wazuh-manager
+-->
+<group name="windows,ad_attack,custom,">
+
+  <!-- ============================================================
+       Milestone 4: AS-REP Roasting (T1558.004)
+       Fires when a TGT is requested for an account that has
+       "Do not require Kerberos preauthentication" set. GetNPUsers.py
+       (Impacket) triggers this by design when roasting such accounts.
+       ============================================================ -->
+  <rule id="100100" level="12">
+    <if_group>windows</if_group>
+    <decoded_as>windows_eventchannel</decoded_as>
+    <field name="win.system.eventID">^4768$</field>
+    <field name="win.eventdata.preAuthType">^0$</field>
+    <description>AS-REP Roasting: TGT requested without pre-authentication for $(win.eventdata.targetUserName)</description>
+    <mitre><id>T1558.004</id></mitre>
+  </rule>
+
+  <!-- ============================================================
+       Milestone 4: Kerberoasting (T1558.003)
+       Fires on a service-ticket request downgraded to RC4
+       (etype 0x17), the signature GetUserSPNs.py produces, while
+       excluding the krbtgt account and machine accounts (trailing $).
+       ============================================================ -->
+  <rule id="100101" level="12">
+    <if_group>windows</if_group>
+    <decoded_as>windows_eventchannel</decoded_as>
+    <field name="win.system.eventID">^4769$</field>
+    <field name="win.eventdata.ticketEncryptionType">^0x17$</field>
+    <field name="win.eventdata.serviceName" negate="yes" type="pcre2">(?i)\$$|^krbtgt$</field>
+    <description>Kerberoasting: RC4 service ticket requested for $(win.eventdata.serviceName)</description>
+    <mitre><id>T1558.003</id></mitre>
+  </rule>
+
+  <!-- ============================================================
+       Milestone 4: DCSync (T1003.006)
+       Fires on Directory Service Access carrying the
+       DS-Replication-Get-Changes-All GUID, requested by an account
+       that is not itself a domain controller's machine account.
+       ============================================================ -->
+  <rule id="100102" level="14">
+    <if_group>windows</if_group>
+    <decoded_as>windows_eventchannel</decoded_as>
+    <field name="win.system.eventID">^4662$</field>
+    <field name="win.eventdata.properties" type="pcre2">1131f6ad-9c07-11d1-f79f-00c04fc2dcd2</field>
+    <field name="win.eventdata.subjectUserName" negate="yes" type="pcre2">\$$</field>
+    <description>DCSync: directory replication rights used by $(win.eventdata.subjectUserName)</description>
+    <mitre><id>T1003.006</id></mitre>
+  </rule>
+
+  <!-- ============================================================
+       Milestone 5: Password Spraying over NTLM (T1110.003)
+       Correlation rule. Chains off stock rule 60122 (Windows logon
+       failure, event IDs 529/4625) and fires when 5+ failures share
+       the same source IP within 60 seconds. Triggers the
+       block-attacker-ip.ps1 Active Response script.
+       ============================================================ -->
+  <rule id="100103" level="12" frequency="5" timeframe="60">
+    <if_matched_sid>60122</if_matched_sid>
+    <same_field>win.eventdata.ipAddress</same_field>
+    <description>Password spray detected: 5+ logon failures from $(win.eventdata.ipAddress) in 60 seconds</description>
+    <mitre><id>T1110.003</id></mitre>
+  </rule>
+
+  <!-- ============================================================
+       Milestone 7: Password Spraying over Kerberos pre-auth (T1110.003)
+       Added after the Caldera/Kerbrute replay proved rule 100103 has
+       a blind spot: it depends on 60122, which only matches NTLM
+       logon failure codes 529/4625, never Kerberos event 4771. These
+       two rules close that gap the same way 60122/100103 cover NTLM.
+       See validation/kerberos-password-spray-gap.md for the full story.
+       ============================================================ -->
+  <rule id="100104" level="5">
+    <if_group>windows</if_group>
+    <decoded_as>windows_eventchannel</decoded_as>
+    <field name="win.system.eventID">^4771$</field>
+    <description>Kerberos pre-authentication failed for $(win.eventdata.targetUserName)</description>
+  </rule>
+
+  <rule id="100105" level="12" frequency="5" timeframe="60">
+    <if_matched_sid>100104</if_matched_sid>
+    <same_field>win.eventdata.ipAddress</same_field>
+    <description>Password spray detected (Kerberos pre-auth): 5+ failures from $(win.eventdata.ipAddress) in 60 seconds</description>
+    <mitre><id>T1110.003</id></mitre>
+  </rule>
+
+</group>
