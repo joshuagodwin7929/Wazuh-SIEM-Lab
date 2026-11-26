@@ -12,7 +12,7 @@ I've now built real attack/defense labs on both platforms against the same kind 
 
 This is the biggest practical difference.
 
-**ELK** gives you raw, parsed fields (via ECS) and a very capable query language (KQL) to search them in Kibana. But there's no detection layer out of the box. Every technique in the ELK lab needed a hand-built KQL query (`event.code:4768 and winlog.event_data.PreAuthType:"0"`, for example), and turning a query into a standing alert meant manually configuring Kibana's alerting feature rule by rule, including things like encryption keys for the alerting backend just to get it running at all.
+**ELK** gives you raw, parsed fields (via ECS) and a very capable query language (KQL) to search them in Kibana. Elastic does have a detection layer, the Elastic Security app ships 1,300+ prebuilt SIEM detection rules mapped to ATT&CK, and both those and custom rules are free under the Basic license. I didn't run that app in my ELK lab, though. I deployed the raw stack (Winlogbeat shipping straight into Elasticsearch, then Discover and Kibana alerting), so every technique needed a hand-built KQL query (`event.code:4768 and winlog.event_data.PreAuthType:"0"`, for example), and turning a query into a standing alert meant configuring Kibana's alerting rule by rule, including things like an encryption key for the alerting backend just to get it running at all. Standing up the full Elastic Security app instead would have given me prebuilt rules out of the box, but it's a heavier deployment than the minimal pipeline I built.
 
 **Wazuh** ships with a huge out-of-box ruleset that already classifies thousands of Windows events, plus a declarative rule-chaining syntax (`if_sid`, `if_matched_sid`, `frequency`, `timeframe`, `same_field`) for building correlation without writing a query from scratch. The password-spray detection gap closed in Milestone 7 of the Wazuh project took about 10 lines of XML and one config-test command. The equivalent correlation logic in the ELK lab (a DCSync alert, for instance) meant hand-rolling the "did this happen more than N times" logic entirely myself, because there's no built-in frequency/timeframe primitive the way Wazuh has.
 
@@ -20,7 +20,7 @@ If the job is "search anything, any way, across huge log volumes," ELK's query p
 
 ## Response, Not Just Detection
 
-Wazuh's Active Response framework is built in: a rule fires, and a script on the endpoint can react automatically (in this lab, a custom PowerShell script that firewalls off an attacker IP the moment a password spray is detected). ELK/Elastic Stack has no equivalent in the open-source core; achieving the same would mean bolting on a separate SOAR tool or writing custom webhook glue from Kibana alerting.
+Wazuh's Active Response framework is built in and free: a rule fires, and a script on the endpoint can react automatically (in this lab, a custom PowerShell script that firewalls off an attacker IP the moment a password spray is detected). Elastic has automated endpoint response actions too, but they sit in its paid Security tiers, so in the free Basic stack there's no built-in equivalent, and matching Wazuh's behavior for free would mean bolting on a separate SOAR tool or writing custom webhook glue from Kibana alerting.
 
 ## Vulnerability Management and Compliance
 
@@ -36,7 +36,7 @@ This isn't a one-sided story. The exact same blind spot showed up independently 
 
 ## Cost Model
 
-Wazuh's full platform, including vulnerability management, CIS compliance, FIM, and active response, is free and open source with no feature gating. The Elastic Stack's core (Elasticsearch, Kibana, Logstash, Beats) is open source too, but the equivalent detection-engineering and fleet-management features that come free in Wazuh have historically sat behind Elastic's paid subscription tiers. In the ELK lab, getting a single working correlation alert meant building it entirely by hand rather than toggling it on.
+Wazuh's full platform, including vulnerability management, CIS compliance, FIM, and active response, is free and open source with no feature gating. The Elastic Stack is free at the Basic tier too, and that free tier is broader than I first assumed: the SIEM detection engine, the 1,300+ prebuilt detection rules, custom rules, Kibana alerting, and Fleet with Elastic Agent are all included. What actually sits behind Elastic's paid tiers (Platinum/Enterprise) is a different set of features: advanced machine-learning jobs, alert suppression, automated endpoint response actions, entity analytics, and the AI assistant. So the honest cost comparison isn't "detection is paid in Elastic, free in Wazuh." It's that Wazuh bundles vulnerability detection, CIS assessment, and automated active response into the free tier, whereas on Elastic the comparable automated-response and some advanced correlation features are the paid part. In my own ELK lab I still built each correlation alert by hand, but that was because I ran the minimal raw stack, not because Elastic's detection features are locked behind a paywall.
 
 ## Verdict
 

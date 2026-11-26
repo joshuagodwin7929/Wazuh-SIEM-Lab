@@ -31,7 +31,7 @@ milestone.
 ![Agent install success](evidence/02-agent-deployment-sysmon/01-mylabpc-agent-install-success.png)
 ![Two active agents](evidence/02-agent-deployment-sysmon/02-endpoints-two-active-agents.png)
 ![Threat Hunting, 936 hits](evidence/02-agent-deployment-sysmon/03-threat-hunting-936-hits.png)
-![First 4625 alert detail](evidence/02-agent-deployment-sysmon/04-first-4625-alert-detail.png)
+![First 4625 alert detail](evidence/02-agent-deployment-sysmon/04-first-4625-alert-details.png)
 ![ossec.conf Sysmon config](evidence/02-agent-deployment-sysmon/05-ossec-conf-sysmon-config.png)
 
 ## Milestone 3: File Integrity Monitoring
